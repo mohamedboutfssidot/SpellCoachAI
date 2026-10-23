@@ -2,6 +2,13 @@
   "name": "spellcoachai",
   "main": "worker/index.js",
   "compatibility_date": "2026-10-19",
+  // Empêche un déploiement d'effacer les variables ajoutées dans le tableau de bord
+  "keep_vars": true,
+  // Variables NON secrètes : on peut les publier dans le dépôt
+  "vars": {
+    "NVIDIA_MODEL": "nvidia/nemotron-nano-9b-v2:free,openrouter/free"
+  },
+  // NVIDIA_API_KEY ne doit PAS être ici : ajoute-la en Secret (voir explications)
   "assets": {
     "directory": "./dist",
     "binding": "ASSETS",
