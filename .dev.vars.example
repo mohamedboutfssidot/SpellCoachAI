@@ -1,0 +1,3 @@
+# Copie ce fichier en .dev.vars pour tester avec `npm run cf:dev`
+NVIDIA_API_KEY=colle-ta-cle-ici
+NVIDIA_MODEL=nvidia/nemotron-nano-9b-v2:free,openrouter/free
