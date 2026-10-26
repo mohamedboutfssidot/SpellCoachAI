@@ -13,8 +13,8 @@ export default function Enhance() {
       const data = await askCoach({ mode: 'enhance', text: text.trim() })
       if (!data.improved && !data.corrected) throw new Error('empty')
       setState({ status: 'done', data })
-    } catch {
-      setState({ status: 'error' })
+    } catch (err) {
+      setState({ status: String(err?.message).includes('429') ? 'quota' : 'error' })
     }
   }
 
@@ -22,7 +22,7 @@ export default function Enhance() {
 
   return (
     <section className="desk" aria-label="Enhance it">
-      <p className="prompt">Écris une phrase en anglais. Le coach la corrige puis la rend plus naturelle.</p>
+      <p className="prompt">Write a sentence in English. The coach corrects it, then makes it sound more natural.</p>
       <textarea
         className="area"
         rows={4}
@@ -34,26 +34,32 @@ export default function Enhance() {
       />
       <div className="actions">
         <button className="primary" onClick={run} disabled={text.trim().length < 3 || state.status === 'loading'}>
-          {state.status === 'loading' ? 'Analyse en cours…' : 'Améliorer'}
+          {state.status === 'loading' ? 'Analysing…' : 'Enhance'}
         </button>
         <span className="keys">{text.length}/400</span>
       </div>
 
+      {state.status === 'quota' && (
+        <aside className="coach" aria-live="polite">
+          <p>The free AI quota is used up for today. Try again later, or add credits to the provider account.</p>
+        </aside>
+      )}
+
       {state.status === 'error' && (
         <aside className="coach" aria-live="polite">
-          <p>Le coach IA est indisponible pour le moment. Vérifie la clé NVIDIA du déploiement, puis réessaie.</p>
+          <p>The AI coach is unavailable right now. Check the deployment's API key, then try again.</p>
         </aside>
       )}
 
       {d && (
         <aside className="coach good" aria-live="polite">
-          <p className="row-label">Corrigé</p>
+          <p className="row-label">Corrected</p>
           <p className="big">{d.corrected}</p>
-          <p className="row-label">Plus naturel</p>
+          <p className="row-label">More natural</p>
           <p className="big">
             {d.improved}{' '}
             {speechSupported() && d.improved && (
-              <button className="chip" onClick={() => speak(d.improved)}>Écouter</button>
+              <button className="chip" onClick={() => speak(d.improved)}>Listen</button>
             )}
           </p>
           {d.changes?.length > 0 && (
@@ -66,7 +72,7 @@ export default function Enhance() {
               ))}
             </ul>
           )}
-          <p className="source">Réponse du modèle IA</p>
+          <p className="source">AI model answer</p>
         </aside>
       )}
     </section>

@@ -27,7 +27,6 @@ export default function Dictation({ level, setStats, review, setReview, addLog }
   const [coach, setCoach] = useState(null)
   const [hint, setHint] = useState(false)
   const [slow, setSlow] = useState(false)
-  const [accent, setAccent] = useState('en-US')
   const [showLength, setShowLength] = useState(true)
   const [speaking, setSpeaking] = useState(false)
   const inputRef = useRef(null)
@@ -36,7 +35,6 @@ export default function Dictation({ level, setStats, review, setReview, addLog }
 
   const say = (text, override = {}) =>
     speak(text, {
-      accent,
       slow,
       onStart: () => setSpeaking(true),
       onEnd: () => setSpeaking(false),
@@ -55,7 +53,7 @@ export default function Dictation({ level, setStats, review, setReview, addLog }
     inputRef.current?.focus()
   }
 
-  // Changement de niveau : nouveau mot (sans lecture, l'utilisateur lance l'audio)
+  // Level change: new word (not spoken, the user starts the audio)
   useEffect(() => {
     if (!mounted.current) { mounted.current = true; return }
     nextWord(false)
@@ -79,12 +77,17 @@ export default function Dictation({ level, setStats, review, setReview, addLog }
       if (ok) {
         if (n[entry.w]) { n[entry.w] -= 1; if (n[entry.w] <= 0) delete n[entry.w] }
       } else {
-        n[entry.w] = 2 // à réussir 2 fois pour sortir de la liste « à revoir »
+        n[entry.w] = 2 // must be answered correctly twice to leave the "to review" list
       }
       return n
     })
 
     const id = ++reqId.current
+    if (ok) {
+      // Correct answer: instant local feedback, no AI call (saves the free quota)
+      setCoach({ status: 'done', data: localCoach(entry, c) })
+      return
+    }
     setCoach({ status: 'loading' })
     askCoach({ mode: 'spell', word: entry.w, attempt, level, correct: ok, errorType: c.type })
       .then(data => id === reqId.current && setCoach({ status: 'done', data }))
@@ -101,50 +104,47 @@ export default function Dictation({ level, setStats, review, setReview, addLog }
   const coachData = coach?.status === 'done' ? coach.data : null
 
   return (
-    <section className="desk" aria-label="Dictée">
+    <section className="desk" aria-label="Word dictation">
       <div className="listen">
         <button
           className={speaking ? 'speak on' : 'speak'}
           onClick={() => say(entry.w)}
           disabled={!speechSupported()}
-          aria-label="Écouter le mot"
+          aria-label="Listen to the word"
         >
           <SpeakerIcon />
         </button>
         <div className="listen-side">
           <p className="prompt">
             {speechSupported()
-              ? 'Écoute le mot, puis écris-le.'
-              : "Ton navigateur ne gère pas la synthèse vocale."}
+              ? 'Listen to the word, then type it.'
+              : 'Your browser does not support speech synthesis.'}
           </p>
           <div className="chips">
-            <button className={slow ? 'chip on' : 'chip'} aria-pressed={slow} onClick={() => setSlow(s => !s)}>Lent</button>
-            <button className={accent === 'en-GB' ? 'chip on' : 'chip'} aria-pressed={accent === 'en-GB'} onClick={() => setAccent(a => (a === 'en-US' ? 'en-GB' : 'en-US'))}>
-              {accent === 'en-US' ? 'Accent US' : 'Accent UK'}
-            </button>
-            <button className={showLength ? 'chip on' : 'chip'} aria-pressed={showLength} onClick={() => setShowLength(s => !s)}>Longueur</button>
-            <button className={hint ? 'chip on' : 'chip'} aria-pressed={hint} onClick={() => setHint(h => !h)}>Indice</button>
+            <button className={slow ? 'chip on' : 'chip'} aria-pressed={slow} onClick={() => setSlow(s => !s)}>Slow</button>
+            <button className={showLength ? 'chip on' : 'chip'} aria-pressed={showLength} onClick={() => setShowLength(s => !s)}>Length</button>
+            <button className={hint ? 'chip on' : 'chip'} aria-pressed={hint} onClick={() => setHint(h => !h)}>Hint</button>
           </div>
-          {hint && <p className="hint">En français : {entry.fr}</p>}
+          {hint && <p className="hint">Meaning: {entry.def}</p>}
         </div>
       </div>
 
       <label className="field" onClick={() => inputRef.current?.focus()}>
-        <span className="sr">Écris le mot que tu entends</span>
+        <span className="sr">Type the word you hear</span>
         {result ? (
           <div className="answer">
-            <p className="row-label">Ta réponse</p>
-            <Tiles letters={result.attempt} marks={result.marks.user} label={`Ta réponse : ${result.attempt}`} />
+            <p className="row-label">Your answer</p>
+            <Tiles letters={result.attempt} marks={result.marks.user} label={`Your answer: ${result.attempt}`} />
             {!result.ok && (
               <>
                 <p className="row-label">Correct</p>
-                <Tiles letters={entry.w} marks={result.marks.target} label={`Correct : ${entry.w}`} />
+                <Tiles letters={entry.w} marks={result.marks.target} label={`Correct: ${entry.w}`} />
               </>
             )}
           </div>
         ) : (
           <>
-            <Tiles letters={value} slots={showLength ? entry.w.length : 0} cursor label="Zone de saisie" />
+            <Tiles letters={value} slots={showLength ? entry.w.length : 0} cursor label="Typing area" />
             <input
               ref={inputRef}
               className="capture"
@@ -163,28 +163,28 @@ export default function Dictation({ level, setStats, review, setReview, addLog }
 
       <div className="actions">
         {result ? (
-          <button className="primary" onClick={() => nextWord(true)} onKeyDown={onKeyDown} autoFocus>Mot suivant</button>
+          <button className="primary" onClick={() => nextWord(true)} onKeyDown={onKeyDown} autoFocus>Next word</button>
         ) : (
-          <button className="primary" onClick={check} disabled={!value.trim()}>Vérifier</button>
+          <button className="primary" onClick={check} disabled={!value.trim()}>Check</button>
         )}
-        <span className="keys">Entrée {result ? 'pour continuer' : 'pour vérifier'}</span>
+        <span className="keys">Press Enter to {result ? 'continue' : 'check'}</span>
       </div>
 
       {result && (
         <aside className={result.ok ? 'coach good' : 'coach'} aria-live="polite">
-          <p className="verdict">{result.ok ? 'Correct.' : 'Presque.'} <span>« {entry.w} » : {entry.fr}</span></p>
-          {coach?.status === 'loading' && <p className="muted">Le coach analyse ta réponse…</p>}
+          <p className="verdict">{result.ok ? 'Correct.' : 'Almost.'} <span>“{entry.w}”: {entry.def}</span></p>
+          {coach?.status === 'loading' && <p className="muted">The coach is checking your answer…</p>}
           {coachData && (
             <>
               <p>{coachData.explanation}</p>
-              {coachData.tip && <p className="tip">Astuce : {coachData.tip}</p>}
+              {coachData.tip && <p className="tip">Tip: {coachData.tip}</p>}
               {coachData.example && (
                 <p className="example">
-                  <button className="chip" onClick={() => say(coachData.example, { slow: false })}>Écouter</button>
-                  <span>{coachData.example}{coachData.example_fr && <em> {coachData.example_fr}</em>}</span>
+                  <button className="chip" onClick={() => say(coachData.example, { slow: false })}>Listen</button>
+                  <span>{coachData.example}</span>
                 </p>
               )}
-              <p className="source">{coachData.source === 'ai' ? 'Réponse du modèle IA' : 'Retour local (IA indisponible)'}</p>
+              <p className="source">{coachData.source === 'ai' ? 'AI model answer' : 'Local feedback (AI unavailable)'}</p>
             </>
           )}
         </aside>

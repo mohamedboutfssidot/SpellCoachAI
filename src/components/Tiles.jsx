@@ -1,5 +1,5 @@
-// Rangée de tuiles façon jeu de lettres.
-// marks : tableau 'ok' | 'bad' | 'miss' (après vérification)
+// A row of letter tiles, like a word game.
+// marks: array of 'ok' | 'bad' | 'miss' (after checking)
 export default function Tiles({ letters, slots = 0, marks, cursor = false, label }) {
   const count = Math.max(letters.length, slots)
   return (

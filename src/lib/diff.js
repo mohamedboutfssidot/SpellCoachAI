@@ -1,4 +1,4 @@
-// Alignement lettre par lettre (distance de Levenshtein + backtrace).
+// Letter-by-letter alignment (Levenshtein distance + backtrace).
 export function align(attempt, target) {
   const a = attempt.toLowerCase()
   const t = target.toLowerCase()
@@ -39,7 +39,7 @@ const hasAdjacentSwap = (attempt, target) => {
   return false
 }
 
-// Type d'erreur : correct | swap | double | missing | extra | wrong | multiple
+// Error type: correct | swap | double | missing | extra | wrong | multiple
 export function classify(attempt, target) {
   const a = attempt.toLowerCase()
   const t = target.toLowerCase()
@@ -62,7 +62,7 @@ export function classify(attempt, target) {
   return { type: 'multiple', distance, ops }
 }
 
-// Couleurs des tuiles : ligne « ta réponse » et ligne « correct »
+// Tile colors: the "your answer" row and the "correct" row
 export function marksFrom(ops, attemptLen, targetLen) {
   const user = new Array(attemptLen).fill('ok')
   const target = new Array(targetLen).fill('ok')

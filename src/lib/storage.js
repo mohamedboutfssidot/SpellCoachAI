@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 
-// useState persisté dans localStorage (sans crash si le stockage est bloqué)
+// useState persisted in localStorage (does not crash if storage is blocked)
 export function useStored(key, initial) {
   const [value, setValue] = useState(() => {
     try {

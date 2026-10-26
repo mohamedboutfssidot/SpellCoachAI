@@ -1,4 +1,4 @@
-// Client du coach IA : appelle la Pages Function /api/coach (la clé NVIDIA reste côté serveur).
+// AI coach client: calls the /api/coach server function (the API key stays on the server).
 export async function askCoach(payload) {
   const ctrl = new AbortController()
   const timer = setTimeout(() => ctrl.abort(), 35000)
@@ -10,32 +10,31 @@ export async function askCoach(payload) {
       signal: ctrl.signal,
     })
     if (!res.ok) throw new Error(`HTTP ${res.status}`)
-    return await res.json() // lève une erreur si la réponse n'est pas du JSON (ex. mode dev sans Functions)
+    return await res.json() // throws if the response is not JSON (e.g. dev mode without the function)
   } finally {
     clearTimeout(timer)
   }
 }
 
-// Plan B hors-ligne : retour pédagogique basé sur des règles, sans IA.
+// Offline backup: rule-based teaching feedback, no AI.
 export function localCoach(entry, result) {
   const missing = result.ops
     .filter(o => o.type === 'missing')
     .map(o => entry.w[o.t])
     .join(', ')
   const messages = {
-    correct: `Bien joué. « ${entry.w} » signifie « ${entry.fr} ».`,
-    swap: 'Deux lettres voisines sont inversées. Relis le mot lettre par lettre.',
-    double: 'Problème de lettre doublée : vérifie quelle lettre se répète.',
-    missing: `Il manque une lettre : ${missing}.`,
-    extra: 'Tu as ajouté une lettre en trop.',
-    wrong: 'Une lettre est incorrecte. Écoute le mot en mode lent.',
-    multiple: 'Plusieurs lettres diffèrent. Écoute en mode lent et découpe le mot en syllabes.',
+    correct: `Well done! "${entry.w}" means: ${entry.def}.`,
+    swap: 'Two letters next to each other are swapped. Read the word again, letter by letter.',
+    double: 'This is a doubled-letter problem. Check which letter repeats.',
+    missing: `A letter is missing: ${missing}.`,
+    extra: 'You added an extra letter.',
+    wrong: 'One letter is wrong. Listen again in slow mode.',
+    multiple: 'Several letters are different. Listen in slow mode and split the word into syllables.',
   }
   return {
     explanation: messages[result.type] || messages.multiple,
     tip: '',
     example: '',
-    example_fr: '',
     source: 'local',
   }
 }

@@ -3,13 +3,14 @@ import Dictation from './components/Dictation.jsx'
 import Enhance from './components/Enhance.jsx'
 import Sentences from './features/sentences/Sentences.jsx'
 import Insights from './features/insights/Insights.jsx'
+import VoiceSettings from './components/VoiceSettings.jsx'
 import { LEVELS } from './data/words.js'
 import { useStored } from './lib/storage.js'
 
 const MODES = [
-  { id: 'dictation', label: 'Mots' },
-  { id: 'sentences', label: 'Phrases' },
-  { id: 'insights', label: 'Progrès' },
+  { id: 'dictation', label: 'Words' },
+  { id: 'sentences', label: 'Sentences' },
+  { id: 'insights', label: 'Progress' },
   { id: 'enhance', label: 'Enhance it' },
 ]
 
@@ -24,7 +25,7 @@ export default function App() {
 
   const addLog = entry => setLog(l => [...l, entry].slice(-300))
   const resetAll = () => {
-    if (!window.confirm('Effacer toute ta progression ?')) return
+    if (!window.confirm('Erase all your progress?')) return
     setStats(EMPTY_STATS); setReview({}); setLog([])
   }
 
@@ -50,15 +51,17 @@ export default function App() {
         </nav>
       </header>
 
-      <dl className="stats" aria-label="Progression">
-        <div><dt>Réussite</dt><dd>{accuracy}%</dd></div>
-        <div><dt>Série</dt><dd>{stats.streak}</dd></div>
-        <div><dt>Record</dt><dd>{stats.best}</dd></div>
-        <div><dt>À revoir</dt><dd>{toReview}</dd></div>
+      <dl className="stats" aria-label="Your stats">
+        <div><dt>Accuracy</dt><dd>{accuracy}%</dd></div>
+        <div><dt>Streak</dt><dd>{stats.streak}</dd></div>
+        <div><dt>Best</dt><dd>{stats.best}</dd></div>
+        <div><dt>To review</dt><dd>{toReview}</dd></div>
       </dl>
 
+      <VoiceSettings />
+
       {needsLevel && (
-        <div className="levels" role="group" aria-label="Niveau">
+        <div className="levels" role="group" aria-label="Level">
           {LEVELS.map(l => (
             <button
               key={l.id}
@@ -81,7 +84,7 @@ export default function App() {
       {mode === 'enhance' && <Enhance />}
 
       <footer className="foot">
-        Voix : Web Speech API · Coach : modèle IA via Cloudflare Pages Functions
+        Voice: Web Speech API · Coach: free AI model via Cloudflare Workers
       </footer>
     </div>
   )

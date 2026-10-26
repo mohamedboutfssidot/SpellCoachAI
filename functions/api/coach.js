@@ -1,6 +1,6 @@
-// Cloudflare Pages Function : proxy sécurisé vers une API compatible OpenAI.
-// Fournisseurs gérés : NVIDIA NIM (clé nvapi-...) et OpenRouter (clé sk-or-...).
-// Variables Cloudflare : NVIDIA_API_KEY (secret), NVIDIA_MODEL (optionnel), AI_BASE_URL (optionnel).
+// Cloudflare function: secure proxy to an OpenAI-compatible API.
+// Supported providers: NVIDIA NIM (key nvapi-...) and OpenRouter (key sk-or-...).
+// Cloudflare variables: NVIDIA_API_KEY (secret), NVIDIA_MODEL (optional), AI_BASE_URL (optional).
 const NVIDIA_URL = 'https://integrate.api.nvidia.com/v1/chat/completions'
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const DEFAULT_MODEL = 'meta/llama-3.1-8b-instruct'
@@ -15,9 +15,9 @@ function providerFor(env) {
 }
 
 const SYSTEM =
-  'You are SpellCoach, a friendly English spelling and writing coach for French-speaking learners. ' +
+  'You are SpellCoach, a friendly English spelling and writing coach for learners whose first language is French. ' +
   'Answer with ONE valid JSON object only: no markdown, no text before or after. ' +
-  'Explanations are written in French, examples in English.'
+  'Write every explanation in simple, clear English: short sentences and easy words.'
 
 const json = (data, status = 200) =>
   new Response(JSON.stringify(data), {
@@ -39,9 +39,9 @@ function buildPrompt(body) {
       : `The learner typed "${attempt}" instead of "${word}". Explain the mistake and give a mnemonic.`
     return (
       `${task} Learner level: ${lvl}.\n` +
-      'Return JSON with keys: "explanation" (French, max 2 short sentences), ' +
-      '"tip" (short memory trick, French, empty string if correct), ' +
-      '"example" (one English sentence using the word), "example_fr" (its French translation).'
+      'Return JSON with keys: "explanation" (simple English, max 2 short sentences), ' +
+      '"tip" (a short memory trick, empty string if correct), ' +
+      '"example" (one English sentence using the word).'
     )
   }
   if (body.mode === 'enhance') {
@@ -51,7 +51,7 @@ function buildPrompt(body) {
       `Learner sentence: """${text}"""\n` +
       'Return JSON with keys: "corrected" (grammar and spelling fixed, minimal edits), ' +
       '"improved" (more natural, fluent English), ' +
-      '"changes" (array of up to 5 objects {"from","to","why"} where "why" is a short French explanation).'
+      '"changes" (array of up to 5 objects {"from","to","why"} where "why" is a short explanation in simple English).'
     )
   }
   if (body.mode === 'sentence') {
@@ -68,7 +68,7 @@ function buildPrompt(body) {
     return (
       `Write ONE short English sentence for a spelling dictation. Level: ${spec}.${use} ` +
       'Use only letters, spaces, apostrophes and basic punctuation (no digits).\n' +
-      'Return JSON with keys: "sentence" and "fr" (its French translation).'
+      'Return JSON with one key: "sentence".'
     )
   }
   if (body.mode === 'plan') {
@@ -90,8 +90,8 @@ function buildPrompt(body) {
       JSON.stringify({ attempts, accuracy_percent: accuracy, error_counts_by_type: errors, hardest_words: words }) +
       '\nError types: swap=two letters swapped, double=doubled letter problem, missing=missing letter, ' +
       'extra=extra letter, wrong=wrong letter, multiple=several differences.\n' +
-      'Return JSON with keys: "summary" (one French sentence about their level) and ' +
-      '"tips" (array of exactly 3 objects {"title","advice"}, in French, concrete and short, ' +
+      'Return JSON with keys: "summary" (one simple English sentence about their level) and ' +
+      '"tips" (array of exactly 3 objects {"title","advice"}, in simple English, concrete and short, ' +
       'referring to their most frequent error types and hardest words).'
     )
   }
@@ -104,7 +104,7 @@ function extractJson(text) {
   return JSON.parse(match[0])
 }
 
-// Liste de modèles à essayer dans l'ordre (NVIDIA_MODEL accepte plusieurs valeurs séparées par des virgules).
+// Models to try in order (NVIDIA_MODEL accepts several values separated by commas).
 function modelsFor(env, provider) {
   const list = (env.NVIDIA_MODEL || DEFAULT_MODEL).split(',').map(m => m.trim()).filter(Boolean)
   if (provider.url === OPENROUTER_URL && !list.includes('openrouter/free')) list.push('openrouter/free')
@@ -126,10 +126,14 @@ async function callModel(env, provider, model, prompt) {
         { role: 'user', content: prompt },
       ],
       temperature: 0.3,
-      max_tokens: 1500, // marge pour les modèles à raisonnement
+      max_tokens: 1500, // room for reasoning models
     }),
   })
-  if (!res.ok) throw new Error(`${model} -> HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`)
+  if (!res.ok) {
+    const err = new Error(`${model} -> HTTP ${res.status}: ${(await res.text()).slice(0, 200)}`)
+    err.status = res.status
+    throw err
+  }
   const data = await res.json()
   const msg = data?.choices?.[0]?.message || {}
   return extractJson(msg.content || msg.reasoning || msg.reasoning_content || '')
@@ -155,12 +159,14 @@ export async function onRequestPost({ request, env }) {
       break
     } catch (err) {
       errors.push(String(err?.message || err).slice(0, 250))
+      // 429 = account quota reached: no point trying the other models (same quota)
+      if (err?.status === 429) return json({ error: 'rate_limited', detail: errors }, 429)
     }
   }
   if (!parsed) return json({ error: 'ai_failed', detail: errors }, 502)
 
   if (body.mode === 'sentence') {
-    return json({ sentence: str(parsed.sentence, 200), fr: str(parsed.fr, 200), source: 'ai', model: usedModel })
+    return json({ sentence: str(parsed.sentence, 200), source: 'ai', model: usedModel })
   }
   if (body.mode === 'plan') {
     return json({
@@ -178,7 +184,6 @@ export async function onRequestPost({ request, env }) {
       explanation: str(parsed.explanation, 400),
       tip: str(parsed.tip, 300),
       example: str(parsed.example, 300),
-      example_fr: str(parsed.example_fr, 300),
       source: 'ai',
       model: usedModel,
     })

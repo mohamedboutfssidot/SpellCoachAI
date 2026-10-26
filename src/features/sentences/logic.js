@@ -1,5 +1,5 @@
-// Dictée de phrases : alignement MOT PAR MOT (même idée que Levenshtein, au niveau des mots).
-// Le pourcentage correspond à 1 - WER (word error rate), la métrique standard en reconnaissance vocale.
+// Sentence dictation: WORD-BY-WORD alignment (same idea as Levenshtein, applied to words).
+// The percentage is 1 - WER (word error rate), the standard metric in speech recognition.
 const tokens = s =>
   s.toLowerCase().replace(/[^a-z' ]+/g, ' ').split(/\s+/).filter(Boolean)
 
@@ -31,30 +31,53 @@ export function scoreSentence(attempt, target) {
   return { a, t, user, tgt, distance: d[n][m], pct: Math.max(0, Math.round((1 - wer) * 100)) }
 }
 
-// Plan B si l'IA est indisponible.
-const bank = (s, fr) => ({ sentence: s, fr })
+// Backup sentences used when the AI is unavailable.
 export const FALLBACK = {
   A: [
-    bank('My friend likes breakfast at school.', "Mon ami aime le petit-déjeuner à l'école."),
-    bank('The weather is beautiful tomorrow.', 'Le temps sera beau demain.'),
-    bank('People in my country are very friendly.', 'Les gens de mon pays sont très sympathiques.'),
-    bank('My family has a different answer.', 'Ma famille a une réponse différente.'),
+    'My friend likes breakfast at school.',
+    'The weather is beautiful tomorrow.',
+    'People in my country are very friendly.',
+    'My family has a different answer.',
+    'We eat vegetables for dinner together.',
+    'Yesterday I listened to music in the kitchen.',
+    'My daughter rides her bicycle on her birthday.',
+    'We have a quiet holiday in February.',
+    'I drink orange juice every morning.',
+    'Is there enough time for a sandwich?',
+    'She walked through the library to find a book.',
+    'Wednesday is my busiest day.',
   ],
   B: [
-    bank('I believe it is necessary to protect the environment.', "Je crois qu'il est nécessaire de protéger l'environnement."),
-    bank('The government will receive the schedule tomorrow.', "Le gouvernement recevra l'emploi du temps demain."),
-    bank('Send me your address and I will definitely reply.', 'Envoie-moi ton adresse et je répondrai certainement.'),
-    bank('Knowledge is a real achievement.', 'Le savoir est une vraie réussite.'),
+    'I believe it is necessary to protect the environment.',
+    'The government will receive the schedule tomorrow.',
+    'Send me your address and I will definitely reply.',
+    'Knowledge is a real achievement.',
+    'The committee will recommend a new calendar immediately.',
+    'It is hard to feel comfortable when the temperature drops.',
+    'This is a great opportunity to build your vocabulary.',
+    'Unfortunately, the restaurant closes before the show.',
+    'Taking responsibility is part of becoming independent.',
+    'I sincerely hope you will not disappear again.',
+    'He did not want to embarrass his colleague.',
+    'My experience taught me that success takes patience.',
   ],
   C: [
-    bank('Good pronunciation requires perseverance and a steady rhythm.', 'Une bonne prononciation demande de la persévérance et un rythme régulier.'),
-    bank('The questionnaire contained miscellaneous questions about sovereignty.', 'Le questionnaire contenait des questions diverses sur la souveraineté.'),
-    bank('Surveillance should never become an unnecessary privilege.', 'La surveillance ne devrait jamais devenir un privilège inutile.'),
-    bank('The entrepreneur found the bureaucracy exhausting.', "L'entrepreneur a trouvé la bureaucratie épuisante."),
+    'Good pronunciation requires perseverance and a steady rhythm.',
+    'The questionnaire contained miscellaneous questions about sovereignty.',
+    'Surveillance should never become an unnecessary privilege.',
+    'The entrepreneur found the bureaucracy exhausting.',
+    'A conscientious assistant manages the correspondence with care.',
+    'Regular maintenance prevents a single occurrence from becoming a disaster.',
+    'The hotel will accommodate every acquaintance on the guest list.',
+    'He tends to exaggerate, but his mischievous humor charms everyone.',
+    'The silhouette appeared at the threshold of the old building.',
+    'A strict hierarchy can supersede individual judgment.',
+    'Her idiosyncrasy was reading under fluorescent lights.',
+    'The new millennium changed how doctors treat pneumonia.',
   ],
 }
 
 export function pickFallback(level, last) {
-  const pool = FALLBACK[level].filter(x => x.sentence !== last)
-  return pool[Math.floor(Math.random() * pool.length)]
+  const pool = FALLBACK[level].filter(s => s !== last)
+  return { sentence: pool[Math.floor(Math.random() * pool.length)] }
 }

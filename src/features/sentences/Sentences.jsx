@@ -17,11 +17,10 @@ export default function Sentences({ level, review }) {
   const [value, setValue] = useState('')
   const [result, setResult] = useState(null)
   const [slow, setSlow] = useState(false)
-  const [showFr, setShowFr] = useState(false)
   const inputRef = useRef(null)
   const reqId = useRef(0)
 
-  // Changement de niveau : on repart de zéro
+  // Level change: start fresh
   useEffect(() => {
     reqId.current++
     setItem(null); setResult(null); setValue(''); setLoading(false)
@@ -31,13 +30,13 @@ export default function Sentences({ level, review }) {
 
   const load = async () => {
     const id = ++reqId.current
-    setLoading(true); setValue(''); setResult(null); setShowFr(false)
+    setLoading(true); setValue(''); setResult(null)
     const focus = Object.keys(review).filter(w => /^[a-z]{2,30}$/.test(w)).slice(0, 3)
     let next
     try {
       const d = await askCoach({ mode: 'sentence', level, focus })
       if (!d.sentence || d.sentence.trim().split(/\s+/).length > 20) throw new Error('bad_sentence')
-      next = { sentence: d.sentence.trim(), fr: d.fr, source: 'ai' }
+      next = { sentence: d.sentence.trim(), source: 'ai' }
     } catch {
       next = { ...pickFallback(level, item?.sentence), source: 'local' }
     }
@@ -60,23 +59,21 @@ export default function Sentences({ level, review }) {
   }
 
   return (
-    <section className="desk" aria-label="Dictée de phrases">
-      <p className="prompt">Écoute la phrase entière, puis écris-la. Le score se calcule mot par mot.</p>
+    <section className="desk" aria-label="Sentence dictation">
+      <p className="prompt">Listen to the whole sentence, then type it. The score is calculated word by word.</p>
 
       {!item ? (
         <div className="actions">
           <button className="primary" onClick={load} disabled={loading}>
-            {loading ? 'Génération…' : 'Générer une phrase'}
+            {loading ? 'Generating…' : 'Generate a sentence'}
           </button>
         </div>
       ) : (
         <>
           <div className="chips">
-            <button className="chip" onClick={() => say()} disabled={!speechSupported()}>Réécouter</button>
-            <button className={slow ? 'chip on' : 'chip'} aria-pressed={slow} onClick={() => setSlow(s => !s)}>Lent</button>
-            <button className={showFr ? 'chip on' : 'chip'} aria-pressed={showFr} onClick={() => setShowFr(f => !f)}>Indice FR</button>
+            <button className="chip" onClick={() => say()} disabled={!speechSupported()}>Listen again</button>
+            <button className={slow ? 'chip on' : 'chip'} aria-pressed={slow} onClick={() => setSlow(s => !s)}>Slow</button>
           </div>
-          {showFr && <p className="hint">{item.fr}</p>}
 
           <textarea
             ref={inputRef}
@@ -86,7 +83,7 @@ export default function Sentences({ level, review }) {
             onChange={e => !result && setValue(e.target.value.slice(0, 200))}
             onKeyDown={onKeyDown}
             readOnly={!!result}
-            placeholder="Tape la phrase entendue…"
+            placeholder="Type the sentence you heard…"
             spellCheck={false}
             autoCorrect="off"
             autoCapitalize="off"
@@ -94,12 +91,12 @@ export default function Sentences({ level, review }) {
           <div className="actions">
             {result ? (
               <button className="primary" onClick={load} disabled={loading} autoFocus>
-                {loading ? 'Génération…' : 'Phrase suivante'}
+                {loading ? 'Generating…' : 'Next sentence'}
               </button>
             ) : (
-              <button className="primary" onClick={check} disabled={!value.trim()}>Vérifier</button>
+              <button className="primary" onClick={check} disabled={!value.trim()}>Check</button>
             )}
-            <span className="keys">Entrée {result ? 'pour continuer' : 'pour vérifier'}</span>
+            <span className="keys">Press Enter to {result ? 'continue' : 'check'}</span>
           </div>
         </>
       )}
@@ -107,18 +104,17 @@ export default function Sentences({ level, review }) {
       {result && (
         <aside className={result.pct === 100 ? 'coach good' : 'coach'} aria-live="polite">
           <p className="verdict">
-            {result.pct}% <span>({result.t.length - Math.min(result.distance, result.t.length)}/{result.t.length} mots justes)</span>
+            {result.pct}% <span>({result.t.length - Math.min(result.distance, result.t.length)}/{result.t.length} words correct)</span>
           </p>
           {result.pct < 100 && (
             <>
-              <p className="row-label">Ta réponse</p>
+              <p className="row-label">Your answer</p>
               <Words words={result.a} marks={result.user} />
             </>
           )}
-          <p className="row-label">Phrase correcte</p>
+          <p className="row-label">Correct sentence</p>
           <Words words={result.t} marks={result.tgt} />
-          <p className="muted">{item.fr}</p>
-          <p className="source">{item.source === 'ai' ? 'Phrase générée par le modèle IA' : 'Phrase de secours (IA indisponible)'}</p>
+          <p className="source">{item.source === 'ai' ? 'Sentence generated by the AI model' : 'Backup sentence (AI unavailable)'}</p>
         </aside>
       )}
     </section>
